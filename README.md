@@ -41,7 +41,7 @@ claude mcp add athenaeum --transport http https://athenaeum.xfeatures.net/mcp \
 [CLI](https://github.com/XfeaturesGroup/XfeaturesAthenaeumCLI):
 
 ```bash
-npx @xfeatures/athenaeum-cli login      # Authorization Code + PKCE, no secret
+npx @xfeaturesgroup/athenaeum-cli login      # Authorization Code + PKCE, no secret
 ```
 
 or for an unattended agent, with the `client_credentials` grant:

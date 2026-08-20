@@ -65,7 +65,7 @@ with `S256` and no client secret — see [OAUTH-PKCE.md](https://github.com/Xfea
 walkthrough, or just use the CLI, which performs it and stores the token:
 
 ```bash
-npx @xfeatures/athenaeum-cli login
+npx @xfeaturesgroup/athenaeum-cli login
 ```
 
 A person's token reaches Athenaeum through the single pre-registered **Athenaeum
