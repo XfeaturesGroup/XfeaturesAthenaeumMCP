@@ -143,4 +143,13 @@ what the tools do, what the trust model is, and runnable examples.
 
 ## Licence
 
-Source-available for reading, not open source. See [LICENSE](LICENSE).
+**Source available — proprietary software, not open source.**
+
+Licensed under the [Xfeatures Client Software License](LICENSE) — not MIT,
+Apache, GPL or any OSI-approved license. Unlike the core platform's license,
+this one is written so you can actually *use* the official, unmodified client
+to talk to Xfeatures Services, including commercially, as part of your own
+product or internal system. What it does not permit, without written
+permission: repackaging or redistributing a modified copy, reselling the
+client itself, white-labelling it, or using its code to build a competing
+client. Full terms in [LICENSE](LICENSE).
