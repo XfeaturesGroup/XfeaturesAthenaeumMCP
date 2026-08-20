@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  examples:
+    name: Examples are valid and safe
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Client configurations are valid JSON
+        run: |
+          for file in examples/clients/*.json; do
+            node -e "JSON.parse(require('fs').readFileSync('$file','utf8')); console.log('  ok  $file')"
+          done
+
+      - name: The probe parses and reports its usage
+        run: |
+          node --check examples/probe.mjs
+          # No token: it must refuse with exit 2 rather than attempt a call.
+          set +e
+          output=$(node examples/probe.mjs 2>&1); code=$?
+          set -e
+          if [ "$code" != "2" ]; then
+            echo "Expected exit 2 without a token, got $code:"; echo "$output"; exit 1
+          fi
+          echo "  ok  refuses to run without a token"
+
+      - name: No example carries a real credential
+        run: |
+          # Examples must read tokens from the environment. A literal bearer
+          # token or client_secret in an example is the failure this catches.
+          if grep -rEn 'Bearer [A-Za-z0-9._-]{20,}|client_secret["'"'"']?\s*[:=]\s*["'"'"'][A-Za-z0-9._-]{16,}' examples/ docs/; then
+            echo "An example appears to contain a literal credential."
+            exit 1
+          fi
+          echo "  ok  no literal credentials in examples or docs"
+
+  links:
+    name: Documentation links resolve
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Relative links point at files that exist
+        run: |
+          node -e "
+            const fs = require('fs'), path = require('path');
+            const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+              const p = path.join(dir, e.name);
+              if (e.isDirectory()) return e.name === 'node_modules' || e.name === '.git' ? [] : walk(p);
+              return p.endsWith('.md') ? [p] : [];
+            });
+            let bad = 0;
+            for (const file of walk('.')) {
+              const text = fs.readFileSync(file, 'utf8');
+              for (const m of text.matchAll(/\[[^\]]*\]\(([^)#][^)]*)\)/g)) {
+                const link = m[1].split('#')[0].trim();
+                if (!link || /^(https?:|mailto:)/.test(link)) continue;
+                if (!fs.existsSync(path.join(path.dirname(file), link))) {
+                  console.error('  broken: ' + file + ' -> ' + link); bad++;
+                }
+              }
+            }
+            if (bad) process.exit(1);
+            console.log('  ok  all relative links resolve');
+          "
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          VERSION=8.24.3
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+      - name: Scan full history
+        run: gitleaks detect --source . --config .gitleaks.toml --redact --verbose --exit-code 1
+      - name: Scan the working tree
+        run: gitleaks detect --source . --no-git --config .gitleaks.toml --redact --verbose --exit-code 1

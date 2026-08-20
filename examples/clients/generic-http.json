@@ -1,0 +1,12 @@
+{
+  "$comment": "MCP client configuration for Xfeatures Athenaeum. See docs/MCP.md. The token comes from the environment -- get one interactively with `athenaeum login` (Authorization Code + PKCE), or from the client_credentials grant for an unattended agent. Never paste a token into a file you commit.",
+  "mcpServers": {
+    "athenaeum": {
+      "type": "http",
+      "url": "https://athenaeum.xfeatures.net/mcp",
+      "headers": {
+        "Authorization": "Bearer ${ATHENAEUM_TOKEN}"
+      }
+    }
+  }
+}
