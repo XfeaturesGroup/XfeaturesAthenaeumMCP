@@ -30,12 +30,15 @@ Clients that support RFC 9728 can discover the authorization server themselves f
 
 | Tool | What it does |
 |---|---|
-| `knowledge_search` | Semantic search across everything the caller is cleared for |
+| `knowledge_search` | Searches facts and documents together, across everything the caller is cleared for |
+| `knowledge_search_facts` | Finds facts by wording when you do not know the key |
+| `knowledge_list_fact_namespaces` / `knowledge_list_facts` | What fact namespaces exist for you, and what is in one |
 | `knowledge_get_fact` | One structured fact by namespace and key |
 | `knowledge_get_document` | One document by id |
 | `knowledge_get_product` / `_plan` / `_policy` / `_incident` | Catalog reads |
 | `knowledge_propose_document` | Draft a document — creates it, does not publish it |
 | `knowledge_submit_document_for_review` | Hand a draft to a human |
+| `knowledge_propose_fact` | Ask a human to change a stored value — changes nothing by itself |
 
 There is no publish tool, no delete tool, and no agent-administration tool. That is
 deliberate: the destructive and the irreversible are not reachable from a model's

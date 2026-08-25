@@ -16,6 +16,6 @@ Verify the connection:
 /mcp
 ```
 
-You should see `athenaeum` connected with nine tools. If it reports an auth
+You should see `athenaeum` connected with thirteen tools. If it reports an auth
 failure, the 401 carries a `WWW-Authenticate` header pointing at the
 protected-resource metadata — see [../../docs/MCP.md](../../docs/MCP.md#errors).

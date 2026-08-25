@@ -1,7 +1,7 @@
 # MCP guide
 
 Xfeatures Athenaeum is a Model Context Protocol server. An MCP-speaking agent
-connects to it, discovers nine tools, and uses them to search and read the
+connects to it, discovers thirteen tools, and uses them to search and read the
 organisation's knowledge — under exactly the permissions its own credential
 carries.
 
@@ -120,24 +120,46 @@ committed.
 
 ## Tool inventory
 
-Nine tools: seven read, two that create a draft. Every one of them consumes rate
-limit, is authorized against the caller's own principal, and writes an audit event
-whether it succeeds or is denied.
+Thirteen tools: ten read, three that only ever produce something a human still has
+to approve. Every one of them consumes rate limit, is authorized against the
+caller's own principal, and writes an audit event whether it succeeds or is denied.
 
 | Tool | Does | Permission required | Rate bucket | Quota |
 |---|---|---|---|---|
-| `knowledge_search` | Semantic search, returns evidence chunks with citations | `knowledge.search`, plus classification and domain filters derived from the principal | search | `searches` |
+| `knowledge_search` | Searches both halves of the knowledge base and labels each result `fact` or `document_chunk`; `include` narrows it to one | `knowledge.search`, plus classification, domain and namespace filters derived from the principal | search | `searches` |
+| `knowledge_search_facts` | Finds facts without knowing their key | `knowledge.search` + `facts.read` per namespace and classification | search | `searches` |
+| `knowledge_list_fact_namespaces` | The fact namespaces this caller can read, with counts | `facts.read` per namespace + classification | read | — |
+| `knowledge_list_facts` | Every current fact in one namespace, with its value | `facts.read` for that namespace **and** each row's classification | read | — |
 | `knowledge_get_fact` | One exact fact by namespace + key | `facts.read` for that namespace **and** the row's classification | read | — |
 | `knowledge_get_document` | One published document, full text | `documents.read` for that domain **and** the row's classification | read | — |
 | `knowledge_get_product` | One product by catalogue code | `products.read`, then `facts.read` on namespace `products` + classification | read | — |
 | `knowledge_get_plan` | One pricing plan by code | `prices.read`, then `facts.read` on namespace `plans` + classification | read | — |
 | `knowledge_get_policy` | One policy by code, full text | `facts.read` on namespace `policies` + classification | read | — |
 | `knowledge_get_incident` | One incident by code | `facts.read` on namespace `incidents` + classification | read | — |
-| `knowledge_propose_document` | Creates a **draft** | `admin.documents` **and** `documents.write`, **and** the caller must be able to read back what it files | admin | `uploads` |
-| `knowledge_submit_document_for_review` | Hands a draft to a human | `documents.write` + the same domain/classification guard | admin | `writes` |
+| `knowledge_propose_document` | Creates a **draft** | `documents.draft`, **and** the caller must be able to read back what it files | admin | `uploads` |
+| `knowledge_submit_document_for_review` | Hands a draft to a human | `documents.draft` + the same domain/classification guard | admin | `writes` |
+| `knowledge_propose_fact` | Files a **proposal**, never a fact | `facts.propose`, **and** the caller must be able to read back the namespace and classification it files into | admin | `writes` |
 
 Reads consume rate limit but not daily quota; writes consume both. Rate limiting
 bounds how fast, quota bounds how much per day — they are not interchangeable.
+
+### Finding a fact you cannot name
+
+`knowledge_search_facts` matches **words, not meanings**. It runs against the
+canonical rows in the database rather than a vector index, which is what makes a
+fact result impossible to serve stale, impossible to serve from a superseded
+version, and impossible to find after the fact has been deleted — but it also
+means a search for "yearly cost" will not match a fact titled "annual price".
+
+An empty result therefore means *nothing matched these words*, never *no such fact
+exists*. Before telling anyone a value is not recorded, try
+`knowledge_list_fact_namespaces` and then `knowledge_list_facts` on the namespace
+it would live in.
+
+When both halves answer, the fact results come first. Not because the scores are
+comparable — they are produced by different means — but because a stored value
+answers "what is X" better than a passage that mentions X, which is the whole
+reason facts are kept separately from documents.
 
 ### What is deliberately absent
 
@@ -149,10 +171,19 @@ administrative verb, and asserts the MCP module never references the D1 binding,
 the R2 binding, a prepared statement, the ingestion queue or the publish workflow.
 Adding a tenth tool that violates any of that fails the build.
 
-The classification guard on `knowledge_propose_document` is worth spelling out: an
-agent cannot file a document under a domain or classification it could not itself
-read back. Otherwise "propose" would be a way to write into a compartment you have
-no access to.
+The classification guard on `knowledge_propose_document` and
+`knowledge_propose_fact` is worth spelling out: an agent cannot file anything
+under a domain, namespace or classification it could not itself read back.
+Otherwise "propose" would be a way to write into a compartment you have no access
+to.
+
+A proposed fact is not a fact in a draft state. It is a row in a separate table
+that no read path consults — not search, not `knowledge_get_fact`, not the
+namespace listing. Approving one is a separate act by a separate principal, and
+every check at that point is against the **reviewer**: their write permission,
+their clearance for the tier being written and for the tier being replaced, and
+whether the fact has changed since the proposal was written. A proposal built on
+a price that has since moved is refused, not applied over whoever moved it.
 
 ## A worked example
 
@@ -210,10 +241,22 @@ Every successful result is wrapped the same way:
   "data": {
     "results": [
       {
+        "type": "fact",
+        "sourceId": "policies/refund-window-days",
+        "documentId": null,
+        "title": "Refund window",
+        "content": "14",
+        "section": "policies",
+        "version": 7,
+        "score": 1
+      },
+      {
+        "type": "document_chunk",
+        "sourceId": "knowledge/public/support/refund-policy/v3.md",
         "documentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
         "title": "Refund Policy",
         "score": 0.82,
-        "excerpt": "Annual plans may be refunded in full within 30 days of renewal…"
+        "content": "Annual plans may be refunded in full within 30 days of renewal…"
       }
     ]
   }

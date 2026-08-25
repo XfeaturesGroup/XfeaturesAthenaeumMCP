@@ -71,18 +71,22 @@ tools/call   ok -- 3 result(s)
              notice present: true
 ```
 
-## The nine tools
+## The thirteen tools
 
-Seven read, two that create a draft.
+Ten read, three that produce something a human still has to approve.
 
 | Tool | Does |
 |---|---|
-| `knowledge_search` | Semantic search, returns evidence chunks with citations |
+| `knowledge_search` | Searches both halves of the knowledge base — stored facts and document passages — and says which each result is |
+| `knowledge_search_facts` | Finds facts without knowing their key. Matches words, not meanings |
+| `knowledge_list_fact_namespaces` | The fact namespaces this caller can read, with counts |
+| `knowledge_list_facts` | Every current fact in one namespace, with its value |
 | `knowledge_get_fact` | One exact fact by namespace and key |
 | `knowledge_get_document` | One published document, full text |
 | `knowledge_get_product` / `_plan` / `_policy` / `_incident` | Catalog lookups by code |
 | `knowledge_propose_document` | Creates a **draft** — never publishes |
 | `knowledge_submit_document_for_review` | Hands a draft to a human |
+| `knowledge_propose_fact` | Files a **proposal** — never changes what the platform answers |
 
 Per-tool permissions, rate buckets and quotas are in [docs/MCP.md](docs/MCP.md#tool-inventory).
 
@@ -91,6 +95,12 @@ Per-tool permissions, rate buckets and quotas are in [docs/MCP.md](docs/MCP.md#t
 No tool publishes, approves, archives, deprecates, trashes, restores, purges,
 rolls back, administers agents or grants a role. There is no raw database or
 object-storage access.
+
+Proposing is not an exception to that. A proposed document is a draft nothing
+returns until a human publishes it, and a proposed fact is a row in a table no
+read path consults until a human with write rights applies it — under their own
+clearance, and refused outright if the value has changed since the proposal was
+written.
 
 That is enforced in the server, not by this repository's documentation: a
 source-inspection test pins the exact tool list, rejects any tool name carrying a
