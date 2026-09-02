@@ -5,9 +5,13 @@
 | [`probe.mjs`](probe.mjs) | Runs `initialize`, `tools/list` and one `tools/call` with plain fetch and no dependencies. Use it when a client will not connect and you need to know whether the problem is the connection or the client. |
 | [`clients/claude-code.md`](clients/claude-code.md) | Adding the server to Claude Code |
 | [`clients/generic-http.json`](clients/generic-http.json) | Streamable HTTP configuration for any MCP client |
+| [`clients/antigravity/`](clients/antigravity/) | Adding the server to Google Antigravity, including the setup script its literal-header-only config needs |
 
-Every example reads its token from `ATHENAEUM_TOKEN`. None contains a
-credential, and CI fails if one ever does.
+Every example reads its token from `ATHENAEUM_TOKEN`, except Antigravity's --
+its config format has no equivalent, so `clients/antigravity/setup.mjs`
+writes the token into the config file directly instead (see that folder's
+README for why). No example contains a credential, and CI fails if one ever
+does.
 
 ```bash
 ATHENAEUM_TOKEN=$(athenaeum whoami --print-token 2>/dev/null || echo "$ATHENAEUM_TOKEN") \
